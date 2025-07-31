@@ -1,9 +1,11 @@
 package com.aghajari.compose.animatedtextdiff
 
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.style.ResolvedTextDirection
 import java.util.LinkedList
 import kotlin.math.max
 import kotlin.math.min
@@ -23,7 +25,7 @@ internal fun computeDiffTextLayout(
 ): DiffTextLayoutResult {
     var indexA = 0
     var indexB = 0
-    var isFirstItem = true
+    var isFirstItem = canOptimizeFirstEqual(textLayoutA, textLayoutB)
     var startText: AnnotatedString? = null
     val dynamic = mutableListOf<TextBoundary>()
     val static = mutableListOf<MoveTextBoundary>()
@@ -120,7 +122,7 @@ private fun newTextBoundary(
         var segmentStartOffset = startOffset
         segments.forEach { segment ->
             val line = textLayout.getLineForOffset(segmentIndex)
-            val box = textLayout.getBoundingBox(segmentIndex)
+            val box = getBoundingBox(textLayout, segment, segmentIndex)
             out.add(
                 TextBoundary(
                     range = TextRange(
@@ -162,8 +164,9 @@ private fun newMoveTextBoundary(
 
         val fromLine = textLayoutA.getLineForOffset(indexA + consumed)
         val toLine = textLayoutB.getLineForOffset(indexB + consumed)
-        val boxA = textLayoutA.getBoundingBox(indexA + consumed)
-        val boxB = textLayoutB.getBoundingBox(indexB + consumed)
+        val boxA = getBoundingBox(textLayoutA, str, indexA + consumed)
+        val boxB = getBoundingBox(textLayoutB, str, indexB + consumed)
+
         out.add(
             MoveTextBoundary(
                 range = TextRange(start = startOffset, end = endOffset),
@@ -175,6 +178,27 @@ private fun newMoveTextBoundary(
             ),
         )
         consumed += endOffset - startOffset
+    }
+}
+
+private fun canOptimizeFirstEqual(
+    textLayoutA: TextLayoutResult,
+    textLayoutB: TextLayoutResult,
+): Boolean {
+    return textLayoutA.getBidiRunDirection(0) == ResolvedTextDirection.Ltr &&
+            textLayoutB.getBidiRunDirection(0) == ResolvedTextDirection.Ltr
+}
+
+private fun getBoundingBox(
+    textLayout: TextLayoutResult,
+    subtext: AnnotatedString,
+    offset: Int,
+): Rect {
+    val dir = textLayout.getBidiRunDirection(offset)
+    return if (dir == ResolvedTextDirection.Rtl) {
+        textLayout.getBoundingBox(offset + subtext.length - 1)
+    } else {
+        textLayout.getBoundingBox(offset)
     }
 }
 
