@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -40,14 +39,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
+import androidx.compose.animation.AnimatedContent
 
 /**
  * Displays text with animated transitions for changes, using a diff algorithm to animate
  * insertions, deletions, and movements of text segments.
+ *
+ * This composable provides fine-grained control over how text changes are animated,
+ * supporting character-level or word-level diffs and transitions like fade, slide, or movement.
+ *
+ * Unlike [AnimatedContent] or [animateContentSize], this offers a more precise and flexible approach
+ * by animating only the changed parts of the text, making transitions feel natural and lively.
+ *
+ * To avoid clipping of animated elements (especially when using [slideInVertically] or
+ * [slideOutVertically]), you can provide [topClipPadding] and/or [bottomClipPadding] to add vertical
+ * space inside the layout bounds. This internal padding ensures that animations aren't cut off by the
+ * parent layout, without affecting alignment or sizing externally. Use it when your entrance/exit
+ * transitions move text outside its initial bounds.
  *
  * @param text the text to be displayed
  * @param modifier the [Modifier] to be applied to this layout node
@@ -82,6 +96,10 @@ import kotlin.coroutines.CoroutineContext
  *   text, baselines and other details. The callback can be used to add additional decoration or
  *   functionality to the text. For example, to draw selection around the text.
  * @param style style configuration for the text such as color, font, line height etc.
+ * @param topClipPadding internal padding added above the content to prevent
+ *   vertical clipping of entrance/exit animations.
+ * @param bottomClipPadding internal padding added below the content to prevent
+ *   vertical clipping of entrance/exit animations.
  * @param diffCleanupStrategy Strategy for cleaning up text diffs.
  * @param diffCoroutineContext Coroutine context for computing the diff.
  * @param diffInsertionBreaker Strategy for breaking inserted text into smaller units for animation.
@@ -115,6 +133,8 @@ fun AnimatedTextDiff(
     style: TextStyle = LocalTextStyle.current.copy(
         textMotion = TextMotion.Animated,
     ),
+    topClipPadding: Dp = 0.dp,
+    bottomClipPadding: Dp = 0.dp,
     diffCleanupStrategy: DiffCleanupStrategy = DiffCleanupStrategy.Efficiency(),
     diffCoroutineContext: CoroutineContext? = null,
     diffInsertionBreaker: DiffBreaker = DiffWordBreaker,
@@ -154,6 +174,8 @@ fun AnimatedTextDiff(
         inlineContent = inlineContent,
         onTextLayout = onTextLayout,
         style = style,
+        topClipPadding = topClipPadding,
+        bottomClipPadding = bottomClipPadding,
         diffCleanupStrategy = diffCleanupStrategy,
         diffCoroutineContext = diffCoroutineContext,
         diffInsertionBreaker = diffInsertionBreaker,
@@ -169,6 +191,18 @@ fun AnimatedTextDiff(
 /**
  * Displays text with animated transitions for changes, using a diff algorithm to animate
  * insertions, deletions, and movements of text segments.
+ *
+ * This composable provides fine-grained control over how text changes are animated,
+ * supporting character-level or word-level diffs and transitions like fade, slide, or movement.
+ *
+ * Unlike [AnimatedContent] or [animateContentSize], this offers a more precise and flexible approach
+ * by animating only the changed parts of the text, making transitions feel natural and lively.
+ *
+ * To avoid clipping of animated elements (especially when using [slideInVertically] or
+ * [slideOutVertically]), you can provide [topClipPadding] and/or [bottomClipPadding] to add vertical
+ * space inside the layout bounds. This internal padding ensures that animations aren't cut off by the
+ * parent layout, without affecting alignment or sizing externally. Use it when your entrance/exit
+ * transitions move text outside its initial bounds.
  *
  * @param text the text to be displayed
  * @param modifier the [Modifier] to be applied to this layout node
@@ -203,6 +237,10 @@ fun AnimatedTextDiff(
  *   text, baselines and other details. The callback can be used to add additional decoration or
  *   functionality to the text. For example, to draw selection around the text.
  * @param style style configuration for the text such as color, font, line height etc.
+ * @param topClipPadding internal padding added above the content to prevent
+ *   vertical clipping of entrance/exit animations.
+ * @param bottomClipPadding internal padding added below the content to prevent
+ *   vertical clipping of entrance/exit animations.
  * @param diffCleanupStrategy Strategy for cleaning up text diffs.
  * @param diffCoroutineContext Coroutine context for computing the diff.
  * @param diffInsertionBreaker Strategy for breaking inserted text into smaller units for animation.
@@ -236,6 +274,8 @@ fun AnimatedTextDiff(
     style: TextStyle = LocalTextStyle.current.copy(
         textMotion = TextMotion.Animated,
     ),
+    topClipPadding: Dp = 0.dp,
+    bottomClipPadding: Dp = 0.dp,
     diffCleanupStrategy: DiffCleanupStrategy = DiffCleanupStrategy.Efficiency(),
     diffCoroutineContext: CoroutineContext? = null,
     diffInsertionBreaker: DiffBreaker = DiffWordBreaker,
@@ -291,7 +331,11 @@ fun AnimatedTextDiff(
         )
     }
 
-    Box(modifier = modifier.animateContentSize()) {
+    TextDiffBox(
+        topPadding = topClipPadding,
+        bottomPadding = bottomClipPadding,
+        modifier = modifier.animateContentSize(),
+    ) {
         LaunchedEffect(text) {
             if (text != currentText.value || newText.value != null) {
                 newText.value?.let {

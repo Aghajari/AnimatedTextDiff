@@ -143,8 +143,10 @@ private fun PreviewCounter() {
         var counter = remember { mutableIntStateOf(1) }
 
         AnimatedTextDiff(
-            text = "\n${counter.intValue}\n",
+            text = "${counter.intValue}",
             diffCleanupStrategy = DiffCleanupStrategy.None,
+            topClipPadding = 16.dp,
+            bottomClipPadding = 16.dp,
         )
 
         LaunchedEffect(Unit) {
