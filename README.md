@@ -2,6 +2,8 @@
 
 A Jetpack Compose library for animating text changes with smooth transitions, powered by the [diff-match-patch](https://github.com/google/diff-match-patch). `AnimatedTextDiff` computes differences between two text states and applies animations to insertions, deletions, and movements, creating a visually engaging experience for text updates in your app.
 
+<img width=500 src="./test.gif"/>
+
 ## Features
 - **Word-Level Diffing**: Animates text changes at the word level for precise and smooth transitions.
 - **Customizable Animations**: Supports custom animations for insertions, deletions, and movements using Compose's animation APIs.
@@ -11,8 +13,6 @@ A Jetpack Compose library for animating text changes with smooth transitions, po
 
 ## Usage
 ### Simple HelloWorld Example
-
-<img width=500 src="./test.gif"/>
 
 Below is a basic example demonstrating how to use `AnimatedTextDiff` to animate text changes when clicking a text area:
 
