@@ -293,8 +293,13 @@ fun AnimatedTextDiff(
 
     Box(modifier = modifier.animateContentSize()) {
         LaunchedEffect(text) {
-            if (text != currentText.value) {
+            if (text != currentText.value || newText.value != null) {
+                newText.value?.let {
+                    currentText.value = it
+                    textLayoutA.value = null
+                }
                 diffLayout.value = null
+                textLayoutB.value = null
                 newText.value = text
                 onAnimationStart?.invoke()
             }
@@ -338,12 +343,14 @@ fun AnimatedTextDiff(
                     exit = exit,
                     move = move,
                     onEnd = {
-                        diffLayout.value = null
-                        currentText.value = textB
-                        newText.value = null
-                        textLayoutA.value = textLayoutB.value
-                        textLayoutB.value = null
-                        onAnimationEnd?.invoke()
+                        if (newText.value == textB) {
+                            diffLayout.value = null
+                            currentText.value = textB
+                            newText.value = null
+                            textLayoutA.value = textLayoutB.value
+                            textLayoutB.value = null
+                            onAnimationEnd?.invoke()
+                        }
                     },
                 ) { text, textModifier ->
                     StyledText(
@@ -464,37 +471,5 @@ private fun TextDiffAnimatedContent(
         if (isRunning.not()) {
             onEnd.invoke()
         }
-    }
-}
-
-@Preview
-@Composable
-private fun Preview() {
-    val textMaker: (String) -> AnnotatedString = { name ->
-        buildAnnotatedString {
-            append("Hello ")
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                append(name)
-            }
-            append("!\nWelcome to App")
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .width(200.dp)
-            .background(Color.White)
-            .padding(16.dp)
-    ) {
-        val text = remember { mutableStateOf(textMaker("World")) }
-        AnimatedTextDiff(
-            text = text.value,
-            modifier = Modifier.clickable {
-                text.value = textMaker("Amir")
-            },
-            onAnimationEnd = {
-                text.value = textMaker("World")
-            }
-        )
     }
 }

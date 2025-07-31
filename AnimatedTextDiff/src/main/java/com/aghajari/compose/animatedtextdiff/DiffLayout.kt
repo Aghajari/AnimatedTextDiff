@@ -100,7 +100,7 @@ private fun newTextBoundary(
     while (consumed < len) {
         val word = textLayout.getWordBoundary(index + consumed)
         val startOffset = max(index + consumed, word.start)
-        val endOffset = min(index + len, word.end)
+        val endOffset = min(index + len, max(startOffset + 1, word.end))
         val str = text.subSequence(startOffset, endOffset)
         if (str.isEmpty()) {
             consumed += max(1, endOffset - startOffset)
@@ -135,7 +135,7 @@ private fun newMoveTextBoundary(
     while (consumed < len) {
         val word = textLayoutA.getWordBoundary(indexA + consumed)
         val startOffset = max(indexA + consumed, word.start)
-        val endOffset = min(indexA + len, word.end)
+        val endOffset = min(indexA + len, max(startOffset + 1, word.end))
         val str = textA.subSequence(startOffset, endOffset)
         if (str.isEmpty()) {
             consumed += max(1, endOffset - startOffset)
