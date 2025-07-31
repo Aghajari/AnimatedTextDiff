@@ -66,8 +66,12 @@ Example with custom animations:
 ```kotlin
 AnimatedTextDiff(
     text = text.value,
-    enter = scaleIn() + fadeIn(animationSpec = tween(500)),
-    exit = scaleOut() + fadeOut(animationSpec = tween(500)),
+    enter = { textToAnimate, range ->
+        scaleIn() + fadeIn(animationSpec = tween(500))
+    },
+    exit = { textToAnimate, range ->
+        scaleOut() + fadeOut(animationSpec = tween(500))
+    },
     move = spring(stiffness = Spring.StiffnessHigh),
 )
 ```
