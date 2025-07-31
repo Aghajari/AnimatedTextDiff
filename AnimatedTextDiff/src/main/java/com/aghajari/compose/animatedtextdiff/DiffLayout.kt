@@ -3,6 +3,7 @@ package com.aghajari.compose.animatedtextdiff
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import java.util.LinkedList
 import kotlin.math.max
 import kotlin.math.min
@@ -110,6 +111,7 @@ private fun newTextBoundary(
         val box = textLayout.getBoundingBox(index + consumed)
         out.add(
             TextBoundary(
+                range = TextRange(start = startOffset, end = endOffset),
                 text = str,
                 left = box.left,
                 top = textLayout.getLineTop(line),
@@ -146,6 +148,7 @@ private fun newMoveTextBoundary(
         val boxB = textLayoutB.getBoundingBox(indexB + consumed)
         out.add(
             MoveTextBoundary(
+                range = TextRange(start = startOffset, end = endOffset),
                 text = str,
                 fromLeft = boxA.left,
                 fromTop = textLayoutA.getLineTop(fromLine),
@@ -164,6 +167,7 @@ internal data class DiffTextLayoutResult(
 )
 
 internal data class TextBoundary(
+    val range: TextRange,
     val text: AnnotatedString,
     val left: Float,
     val top: Float,
@@ -177,6 +181,7 @@ internal data class TextBoundary(
 }
 
 internal data class MoveTextBoundary(
+    val range: TextRange,
     val text: AnnotatedString,
     val fromLeft: Float,
     val fromTop: Float,

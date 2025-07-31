@@ -37,6 +37,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -126,12 +127,16 @@ fun AnimatedTextDiff(
     diffCoroutineContext: CoroutineContext? = null,
     onAnimationStart: (() -> Unit)? = null,
     onAnimationEnd: (() -> Unit)? = null,
-    enter: EnterTransition = fadeIn() + slideInVertically(
-        initialOffsetY = { -it },
-    ),
-    exit: ExitTransition = fadeOut() + slideOutVertically(
-        targetOffsetY = { it },
-    ),
+    enter: (String, TextRange) -> EnterTransition = { _, _ ->
+        fadeIn() + slideInVertically(
+            initialOffsetY = { -it },
+        )
+    },
+    exit: (String, TextRange) -> ExitTransition = { _, _ ->
+        fadeOut() + slideOutVertically(
+            targetOffsetY = { it },
+        )
+    },
     move: FiniteAnimationSpec<Float> = spring(
         stiffness = Spring.StiffnessMediumLow,
     ),
@@ -159,8 +164,8 @@ fun AnimatedTextDiff(
         diffCoroutineContext = diffCoroutineContext,
         onAnimationStart = onAnimationStart,
         onAnimationEnd = onAnimationEnd,
-        enter = enter,
-        exit = exit,
+        enter = { text, range -> enter.invoke(text.text, range) },
+        exit = { text, range -> exit.invoke(text.text, range) },
         move = move,
     )
 }
@@ -237,12 +242,16 @@ fun AnimatedTextDiff(
     diffCoroutineContext: CoroutineContext? = null,
     onAnimationStart: (() -> Unit)? = null,
     onAnimationEnd: (() -> Unit)? = null,
-    enter: EnterTransition = fadeIn() + slideInVertically(
-        initialOffsetY = { -it/2 },
-    ),
-    exit: ExitTransition = fadeOut() + slideOutVertically(
-        targetOffsetY = { it/2 },
-    ),
+    enter: (AnnotatedString, TextRange) -> EnterTransition = { _, _ ->
+        fadeIn() + slideInVertically(
+            initialOffsetY = { -it },
+        )
+    },
+    exit: (AnnotatedString, TextRange) -> ExitTransition = { _, _ ->
+        fadeOut() + slideOutVertically(
+            targetOffsetY = { it },
+        )
+    },
     move: FiniteAnimationSpec<Float> = spring(
         stiffness = Spring.StiffnessMediumLow,
     ),
@@ -393,8 +402,8 @@ private fun ComputeDiffLayout(
 @Composable
 private fun TextDiffAnimatedContent(
     diff: DiffTextLayoutResult,
-    enter: EnterTransition,
-    exit: ExitTransition,
+    enter: (AnnotatedString, TextRange) -> EnterTransition,
+    exit: (AnnotatedString, TextRange) -> ExitTransition,
     move: FiniteAnimationSpec<Float>,
     onEnd: () -> Unit,
     content: @Composable (AnnotatedString, Modifier) -> Unit,
@@ -417,8 +426,16 @@ private fun TextDiffAnimatedContent(
     diff.dynamic.fastForEach { boundary ->
         AnimatedVisibility(
             visibleState = boundary.visibleState,
-            enter = enter,
-            exit = exit,
+            enter = if (boundary.isExit.not()) {
+                enter.invoke(boundary.text, boundary.range)
+            } else {
+                fadeIn()
+            },
+            exit = if (boundary.isExit) {
+                exit.invoke(boundary.text, boundary.range)
+            } else {
+                fadeOut()
+            },
             modifier = Modifier.graphicsLayer(
                 translationX = boundary.left,
                 translationY = boundary.top,
