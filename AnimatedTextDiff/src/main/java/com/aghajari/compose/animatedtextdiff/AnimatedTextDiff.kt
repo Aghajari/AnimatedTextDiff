@@ -12,12 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -35,11 +30,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Paragraph
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -47,10 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
@@ -94,6 +84,8 @@ import kotlin.coroutines.CoroutineContext
  * @param style style configuration for the text such as color, font, line height etc.
  * @param diffCleanupStrategy Strategy for cleaning up text diffs.
  * @param diffCoroutineContext Coroutine context for computing the diff.
+ * @param diffInsertionBreaker Strategy for breaking inserted text into smaller units for animation.
+ * @param diffDeletionBreaker Strategy for breaking deleted text into smaller units for animation.
  * @param onAnimationStart callback that is executed when text changes.
  * @param onAnimationEnd callback that is executed when text transformed.
  * @param enter Animation for text insertion.
@@ -125,6 +117,8 @@ fun AnimatedTextDiff(
     ),
     diffCleanupStrategy: DiffCleanupStrategy = DiffCleanupStrategy.Efficiency(),
     diffCoroutineContext: CoroutineContext? = null,
+    diffInsertionBreaker: DiffBreaker? = null,
+    diffDeletionBreaker: DiffBreaker? = null,
     onAnimationStart: (() -> Unit)? = null,
     onAnimationEnd: (() -> Unit)? = null,
     enter: (String, TextRange) -> EnterTransition = { _, _ ->
@@ -162,6 +156,8 @@ fun AnimatedTextDiff(
         style = style,
         diffCleanupStrategy = diffCleanupStrategy,
         diffCoroutineContext = diffCoroutineContext,
+        diffInsertionBreaker = diffInsertionBreaker,
+        diffDeletionBreaker = diffDeletionBreaker,
         onAnimationStart = onAnimationStart,
         onAnimationEnd = onAnimationEnd,
         enter = { text, range -> enter.invoke(text.text, range) },
@@ -209,6 +205,8 @@ fun AnimatedTextDiff(
  * @param style style configuration for the text such as color, font, line height etc.
  * @param diffCleanupStrategy Strategy for cleaning up text diffs.
  * @param diffCoroutineContext Coroutine context for computing the diff.
+ * @param diffInsertionBreaker Strategy for breaking inserted text into smaller units for animation.
+ * @param diffDeletionBreaker Strategy for breaking deleted text into smaller units for animation.
  * @param onAnimationStart callback that is executed when text changes.
  * @param onAnimationEnd callback that is executed when text transformed.
  * @param enter Animation for text insertion.
@@ -240,6 +238,8 @@ fun AnimatedTextDiff(
     ),
     diffCleanupStrategy: DiffCleanupStrategy = DiffCleanupStrategy.Efficiency(),
     diffCoroutineContext: CoroutineContext? = null,
+    diffInsertionBreaker: DiffBreaker? = null,
+    diffDeletionBreaker: DiffBreaker? = null,
     onAnimationStart: (() -> Unit)? = null,
     onAnimationEnd: (() -> Unit)? = null,
     enter: (AnnotatedString, TextRange) -> EnterTransition = { _, _ ->
@@ -334,6 +334,8 @@ fun AnimatedTextDiff(
                 newText = textB,
                 diffCoroutineContext = diffCoroutineContext,
                 diffCleanupStrategy = diffCleanupStrategy,
+                diffInsertionBreaker = diffInsertionBreaker,
+                diffDeletionBreaker = diffDeletionBreaker,
             )
 
             if (diffLayout.value != null) {
@@ -371,7 +373,9 @@ private fun ComputeDiffLayout(
     currentText: AnnotatedString,
     newText: AnnotatedString,
     diffCoroutineContext: CoroutineContext?,
-    diffCleanupStrategy: DiffCleanupStrategy
+    diffCleanupStrategy: DiffCleanupStrategy,
+    diffInsertionBreaker: DiffBreaker?,
+    diffDeletionBreaker: DiffBreaker?,
 ) {
     if (diffLayout.value == null &&
         textLayoutA != null &&
@@ -385,6 +389,8 @@ private fun ComputeDiffLayout(
                     textLayoutA = textLayoutA,
                     textLayoutB = textLayoutB,
                     cleanupStrategy = diffCleanupStrategy,
+                    insertionBreaker = diffInsertionBreaker,
+                    deletionBreaker = diffDeletionBreaker,
                 )
             }
         } else {
@@ -396,6 +402,8 @@ private fun ComputeDiffLayout(
                         textLayoutA = textLayoutA,
                         textLayoutB = textLayoutB,
                         cleanupStrategy = diffCleanupStrategy,
+                        insertionBreaker = diffInsertionBreaker,
+                        deletionBreaker = diffDeletionBreaker,
                     )
                 }
             }
@@ -463,7 +471,7 @@ private fun TextDiffAnimatedContent(
     val isRunning by remember {
         derivedStateOf {
             moveAnimation?.isRunning == true ||
-                    diff.dynamic.any { it.visibleState.isIdle.not() }
+                    diff.dynamic.any { it.isRunning }
         }
     }
 

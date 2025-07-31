@@ -168,3 +168,64 @@ private fun PreviewSequence() {
         }
     }
 }
+
+@Preview
+@Composable
+private fun PreviewCharacterByCharacterSequence() {
+    val initialText = AnnotatedString("Hello, ")
+
+    PreviewBox(initialText = initialText) { text ->
+        var charIndex = remember { mutableIntStateOf(0) }
+
+        AnimatedTextDiff(
+            text = text.value,
+            diffInsertionBreaker = DiffCharacterBreaker(),
+            onAnimationStart = {
+                charIndex.intValue = 0
+            },
+            enter = { textToAnimate, range ->
+                val animationSpec = tween<Float>(
+                    durationMillis = 500,
+                    delayMillis = charIndex.intValue++ * 100,
+                )
+                fadeIn(animationSpec) + scaleIn(animationSpec)
+            },
+            exit = { textToAnimate, range ->
+                val animationSpec = tween<Float>(
+                    durationMillis = 500,
+                    delayMillis = 1000,
+                )
+                fadeOut(animationSpec) + scaleOut(animationSpec)
+            },
+        )
+
+        LaunchedEffect(Unit) {
+            delay(1000)
+            text.value = AnnotatedString("Hello, How are you‌?")
+            delay(3000)
+            text.value = initialText
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewCounter() {
+    val initialText = AnnotatedString("Hello, ")
+
+    PreviewBox(initialText = initialText) { text ->
+        var counter = remember { mutableIntStateOf(1) }
+
+        AnimatedTextDiff(
+            text = "\n${counter.intValue}\n",
+            diffCleanupStrategy = DiffCleanupStrategy.None,
+        )
+
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(1000)
+                counter.intValue++
+            }
+        }
+    }
+}

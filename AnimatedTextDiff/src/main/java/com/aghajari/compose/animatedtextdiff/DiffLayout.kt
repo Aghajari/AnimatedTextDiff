@@ -18,6 +18,8 @@ internal fun computeDiffTextLayout(
     textLayoutA: TextLayoutResult,
     textLayoutB: TextLayoutResult,
     cleanupStrategy: DiffCleanupStrategy,
+    insertionBreaker: DiffBreaker?,
+    deletionBreaker: DiffBreaker?,
 ): DiffTextLayoutResult {
     var indexA = 0
     var indexB = 0
@@ -34,11 +36,11 @@ internal fun computeDiffTextLayout(
         val len = it.text.length
         when (it.operation) {
             DiffComputer.Operation.DELETE -> {
-                newTextBoundary(textLayoutA, indexA, dynamic, textA, len, true)
+                newTextBoundary(textLayoutA, indexA, dynamic, textA, len, deletionBreaker, true)
                 indexA += len
             }
             DiffComputer.Operation.INSERT -> {
-                newTextBoundary(textLayoutB, indexB, dynamic, textB, len, false)
+                newTextBoundary(textLayoutB, indexB, dynamic, textB, len, insertionBreaker, false)
                 indexB += len
             }
             DiffComputer.Operation.EQUAL -> {
@@ -94,6 +96,7 @@ private fun newTextBoundary(
     out: MutableList<TextBoundary>,
     text: AnnotatedString,
     len: Int,
+    breaker: DiffBreaker?,
     isExit: Boolean,
 ) {
     var consumed = 0
@@ -107,17 +110,32 @@ private fun newTextBoundary(
             continue
         }
 
-        val line = textLayout.getLineForOffset(index + consumed)
-        val box = textLayout.getBoundingBox(index + consumed)
-        out.add(
-            TextBoundary(
-                range = TextRange(start = startOffset, end = endOffset),
-                text = str,
-                left = box.left,
-                top = textLayout.getLineTop(line),
-                isExit = isExit,
-            ),
-        )
+        val segments = breaker?.breakSegment(
+            textSegment = str,
+            textLayout = textLayout,
+            startIndex = startOffset,
+        ) ?: listOf(str)
+
+        var segmentIndex = index + consumed
+        var segmentStartOffset = startOffset
+        segments.forEach { segment ->
+            val line = textLayout.getLineForOffset(segmentIndex)
+            val box = textLayout.getBoundingBox(segmentIndex)
+            out.add(
+                TextBoundary(
+                    range = TextRange(
+                        start = segmentStartOffset,
+                        end = segmentStartOffset + segment.length,
+                    ),
+                    text = segment,
+                    left = box.left,
+                    top = textLayout.getLineTop(line),
+                    isExit = isExit,
+                ),
+            )
+            segmentStartOffset += segment.length
+            segmentIndex += segment.length
+        }
         consumed += endOffset - startOffset
     }
 }
@@ -174,6 +192,8 @@ internal data class TextBoundary(
     val isExit: Boolean,
 ) {
     val visibleState = MutableTransitionState(isExit)
+    val isRunning: Boolean
+        get() = visibleState.isIdle.not()
 
     fun runAnimation() {
         visibleState.targetState = isExit.not()
@@ -185,6 +205,6 @@ internal data class MoveTextBoundary(
     val text: AnnotatedString,
     val fromLeft: Float,
     val fromTop: Float,
-    val toLeft: Float = fromLeft,
-    val toTop: Float = fromTop,
+    val toLeft: Float,
+    val toTop: Float,
 )
