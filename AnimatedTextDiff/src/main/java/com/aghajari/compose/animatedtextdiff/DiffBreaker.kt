@@ -51,3 +51,13 @@ class DiffCharacterBreaker(
         return out
     }
 }
+
+object DiffWordBreaker : DiffBreaker {
+    override fun breakSegment(
+        textSegment: AnnotatedString,
+        textLayout: TextLayoutResult,
+        startIndex: Int
+    ): List<AnnotatedString> {
+        return listOf(textSegment)
+    }
+}

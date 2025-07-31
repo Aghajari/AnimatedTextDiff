@@ -117,8 +117,8 @@ fun AnimatedTextDiff(
     ),
     diffCleanupStrategy: DiffCleanupStrategy = DiffCleanupStrategy.Efficiency(),
     diffCoroutineContext: CoroutineContext? = null,
-    diffInsertionBreaker: DiffBreaker? = null,
-    diffDeletionBreaker: DiffBreaker? = null,
+    diffInsertionBreaker: DiffBreaker = DiffWordBreaker,
+    diffDeletionBreaker: DiffBreaker = DiffWordBreaker,
     onAnimationStart: (() -> Unit)? = null,
     onAnimationEnd: (() -> Unit)? = null,
     enter: (String, TextRange) -> EnterTransition = { _, _ ->
@@ -238,8 +238,8 @@ fun AnimatedTextDiff(
     ),
     diffCleanupStrategy: DiffCleanupStrategy = DiffCleanupStrategy.Efficiency(),
     diffCoroutineContext: CoroutineContext? = null,
-    diffInsertionBreaker: DiffBreaker? = null,
-    diffDeletionBreaker: DiffBreaker? = null,
+    diffInsertionBreaker: DiffBreaker = DiffWordBreaker,
+    diffDeletionBreaker: DiffBreaker = DiffWordBreaker,
     onAnimationStart: (() -> Unit)? = null,
     onAnimationEnd: (() -> Unit)? = null,
     enter: (AnnotatedString, TextRange) -> EnterTransition = { _, _ ->
@@ -374,8 +374,8 @@ private fun ComputeDiffLayout(
     newText: AnnotatedString,
     diffCoroutineContext: CoroutineContext?,
     diffCleanupStrategy: DiffCleanupStrategy,
-    diffInsertionBreaker: DiffBreaker?,
-    diffDeletionBreaker: DiffBreaker?,
+    diffInsertionBreaker: DiffBreaker,
+    diffDeletionBreaker: DiffBreaker,
 ) {
     if (diffLayout.value == null &&
         textLayoutA != null &&

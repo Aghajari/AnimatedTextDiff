@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -23,6 +24,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
@@ -133,62 +136,60 @@ private fun PreviewEnterTransition() {
 
 @Preview
 @Composable
-private fun PreviewSequence() {
+private fun PreviewCounter() {
     val initialText = AnnotatedString("Hello, ")
 
     PreviewBox(initialText = initialText) { text ->
-        var wordIndex = remember { mutableIntStateOf(0) }
+        var counter = remember { mutableIntStateOf(1) }
 
         AnimatedTextDiff(
-            text = text.value,
-            onAnimationStart = {
-                wordIndex.intValue = 0
-            },
-            enter = { textToAnimate, range ->
-                val animationSpec = tween<Float>(
-                    durationMillis = 500,
-                    delayMillis = wordIndex.intValue++ * 100,
-                )
-                fadeIn(animationSpec) + scaleIn(animationSpec)
-            },
-            exit = { textToAnimate, range ->
-                val animationSpec = tween<Float>(
-                    durationMillis = 500,
-                    delayMillis = 1000,
-                )
-                fadeOut(animationSpec) + scaleOut(animationSpec)
-            },
+            text = "\n${counter.intValue}\n",
+            diffCleanupStrategy = DiffCleanupStrategy.None,
         )
 
         LaunchedEffect(Unit) {
-            delay(1000)
-            text.value = AnnotatedString("Hello, How are you‌?")
-            delay(2000)
-            text.value = initialText
+            while (true) {
+                delay(1000)
+                counter.intValue++
+            }
         }
     }
 }
 
 @Preview
 @Composable
-private fun PreviewCharacterByCharacterSequence() {
+private fun PreviewDiffBreaker(
+    @PreviewParameter(DiffBreakerPreviewParameterProvider::class)
+    diffBreaker: DiffBreaker,
+) {
     val initialText = AnnotatedString("Hello, ")
 
     PreviewBox(initialText = initialText) { text ->
-        var charIndex = remember { mutableIntStateOf(0) }
+        var tokenIndex = 0
 
         AnimatedTextDiff(
             text = text.value,
-            diffInsertionBreaker = DiffCharacterBreaker(),
-            onAnimationStart = {
-                charIndex.intValue = 0
-            },
+            diffInsertionBreaker = diffBreaker,
+            onAnimationStart = { tokenIndex = 0 },
             enter = { textToAnimate, range ->
-                val animationSpec = tween<Float>(
-                    durationMillis = 500,
-                    delayMillis = charIndex.intValue++ * 100,
+                val delay = tokenIndex++ * 100
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 500,
+                        delayMillis = delay,
+                    ),
+                ) + scaleIn(
+                    animationSpec = tween(
+                        durationMillis = 500,
+                        delayMillis = delay,
+                    ),
+                ) + slideInVertically(
+                    animationSpec = tween(
+                        durationMillis = 500,
+                        delayMillis = delay,
+                    ),
+                    initialOffsetY = { it / 2 },
                 )
-                fadeIn(animationSpec) + scaleIn(animationSpec)
             },
             exit = { textToAnimate, range ->
                 val animationSpec = tween<Float>(
@@ -208,24 +209,10 @@ private fun PreviewCharacterByCharacterSequence() {
     }
 }
 
-@Preview
-@Composable
-private fun PreviewCounter() {
-    val initialText = AnnotatedString("Hello, ")
-
-    PreviewBox(initialText = initialText) { text ->
-        var counter = remember { mutableIntStateOf(1) }
-
-        AnimatedTextDiff(
-            text = "\n${counter.intValue}\n",
-            diffCleanupStrategy = DiffCleanupStrategy.None,
-        )
-
-        LaunchedEffect(Unit) {
-            while (true) {
-                delay(1000)
-                counter.intValue++
-            }
-        }
-    }
+private class DiffBreakerPreviewParameterProvider :
+    PreviewParameterProvider<DiffBreaker?> {
+    override val values = sequenceOf(
+        DiffWordBreaker,
+        DiffCharacterBreaker(),
+    )
 }

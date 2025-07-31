@@ -18,8 +18,8 @@ internal fun computeDiffTextLayout(
     textLayoutA: TextLayoutResult,
     textLayoutB: TextLayoutResult,
     cleanupStrategy: DiffCleanupStrategy,
-    insertionBreaker: DiffBreaker?,
-    deletionBreaker: DiffBreaker?,
+    insertionBreaker: DiffBreaker,
+    deletionBreaker: DiffBreaker,
 ): DiffTextLayoutResult {
     var indexA = 0
     var indexB = 0
@@ -96,7 +96,7 @@ private fun newTextBoundary(
     out: MutableList<TextBoundary>,
     text: AnnotatedString,
     len: Int,
-    breaker: DiffBreaker?,
+    breaker: DiffBreaker,
     isExit: Boolean,
 ) {
     var consumed = 0
@@ -110,11 +110,11 @@ private fun newTextBoundary(
             continue
         }
 
-        val segments = breaker?.breakSegment(
+        val segments = breaker.breakSegment(
             textSegment = str,
             textLayout = textLayout,
             startIndex = startOffset,
-        ) ?: listOf(str)
+        )
 
         var segmentIndex = index + consumed
         var segmentStartOffset = startOffset
