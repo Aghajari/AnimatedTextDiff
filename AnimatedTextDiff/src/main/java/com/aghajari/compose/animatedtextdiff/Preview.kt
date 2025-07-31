@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -94,7 +95,7 @@ private fun PreviewScaleAnimation() {
 
 @Preview
 @Composable
-private fun PreviewEnterTransition2() {
+private fun PreviewEnterTransition() {
     val initialText = makeText(
         start = "Hello< ",
         end = " > Test",
@@ -126,6 +127,44 @@ private fun PreviewEnterTransition2() {
                 bold = "World",
                 end = " This\nLine 2 > Test",
             )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewSequence() {
+    val initialText = AnnotatedString("Hello, ")
+
+    PreviewBox(initialText = initialText) { text ->
+        var wordIndex = remember { mutableIntStateOf(0) }
+
+        AnimatedTextDiff(
+            text = text.value,
+            onAnimationStart = {
+                wordIndex.intValue = 0
+            },
+            enter = { textToAnimate, range ->
+                val animationSpec = tween<Float>(
+                    durationMillis = 500,
+                    delayMillis = wordIndex.intValue++ * 100,
+                )
+                fadeIn(animationSpec) + scaleIn(animationSpec)
+            },
+            exit = { textToAnimate, range ->
+                val animationSpec = tween<Float>(
+                    durationMillis = 500,
+                    delayMillis = 1000,
+                )
+                fadeOut(animationSpec) + scaleOut(animationSpec)
+            },
+        )
+
+        LaunchedEffect(Unit) {
+            delay(1000)
+            text.value = AnnotatedString("Hello, How are you‌?")
+            delay(2000)
+            text.value = initialText
         }
     }
 }
