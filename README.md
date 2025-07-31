@@ -4,6 +4,8 @@ A Jetpack Compose library for animating text changes with smooth transitions, po
 
 <img width=500 src="./test.gif"/>
 
+<img width=500 src="./test2.gif"/>
+
 ## Features
 - **Word-Level Diffing**: Animates text changes at the word level for precise and smooth transitions.
 - **Customizable Animations**: Supports custom animations for insertions, deletions, and movements using Compose's animation APIs.
