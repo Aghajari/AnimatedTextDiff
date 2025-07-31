@@ -102,7 +102,7 @@ private fun newTextBoundary(
         val startOffset = max(index + consumed, word.start)
         val endOffset = min(index + len, max(startOffset + 1, word.end))
         val str = text.subSequence(startOffset, endOffset)
-        if (str.isEmpty()) {
+        if (str.isBlank()) {
             consumed += max(1, endOffset - startOffset)
             continue
         }
@@ -137,7 +137,7 @@ private fun newMoveTextBoundary(
         val startOffset = max(indexA + consumed, word.start)
         val endOffset = min(indexA + len, max(startOffset + 1, word.end))
         val str = textA.subSequence(startOffset, endOffset)
-        if (str.isEmpty()) {
+        if (str.isBlank()) {
             consumed += max(1, endOffset - startOffset)
             continue
         }
