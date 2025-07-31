@@ -8,8 +8,6 @@ A Jetpack Compose library for animating text changes with smooth transitions, po
 
 <img width=500 src="./demo/test3.gif"/>
 
-<img width=500 src="./demo/test4.gif"/>
-
 ## Features
 - **Word-Level Diffing**: Animates text changes at the word level for precise and smooth transitions.
 - **Customizable Animations**: Supports custom animations for insertions, deletions, and movements using Compose's animation APIs.
@@ -50,14 +48,14 @@ This example animates the transition from "Hello World!" to "Hello Amir!", with 
 ## Diff Cleanup Strategy
 The `diffCleanupStrategy` controls how the diff algorithm optimizes changes:
 
-- **`Cleanup.None`**: No cleanup, resulting in fine-grained diffs. For example, changing "World" to "Amir" might:
+- **`None`**: No cleanup, resulting in fine-grained diffs. For example, changing "World" to "Amir" might:
   - Move the character 'r' (shared between both).
   - Delete "Wo" and "ld".
   - Insert "Ami".
-- **`Cleanup.Semantic`**: Removes entire words for cleaner diffs. For "World" to "Amir":
+- **`Semantic`**: Removes entire words for cleaner diffs. For "World" to "Amir":
   - Deletes the whole word "World".
   - Inserts the whole word "Amir".
-- **`Cleanup.Efficiency`**: Balances semantic cleanup with performance, reducing trivial edits.
+- **`Efficiency`**: Balances semantic cleanup with performance, reducing trivial edits.
 
 ## Customizing Animations
 You can customize the animations for insertions, deletions, and movements:
@@ -79,3 +77,46 @@ AnimatedTextDiff(
     move = spring(stiffness = Spring.StiffnessHigh),
 )
 ```
+
+## DiffBreaker
+`DiffBreaker` allows you to customize how inserted and deleted text segments are split into smaller units for animation in `AnimatedTextDiff`. The minimum unit for diffing is word-by-word, meaning movement animations (for unchanged text) are always applied at the word level. However, you can use `diffInsertionBreaker` and `diffDeletionBreaker` to control the granularity of insertion and deletion animations, such as animating character-by-character for insertions or word-by-word for deletions.
+
+The following example demonstrates animating text changes with `DiffCharacterBreaker` for insertions (e.g., animating "World" as "W", "o", "r", "l", "d"):
+
+Word-By-Word breaker:
+
+<img width=500 src="./demo/test4.gif"/>
+
+Character-By-Character breaker:
+
+<img width=500 src="./demo/test5.gif"/>
+
+```kotlin
+@Preview
+@Composable
+fun CharacterByCharacterSequenceDemo() {
+    val text = remember { mutableStateOf("Hello, ") }
+    var charIndex = 0
+
+    AnimatedTextDiff(
+        modifier = Modifier.fillMaxWidth(),
+        text = text.value,
+        diffInsertionBreaker = DiffCharacterBreaker(),
+        onAnimationStart = { charIndex = 0 },
+        enter = { textToAnimate, range ->
+            val animationSpec = tween<Float>(
+                durationMillis = 500,
+                delayMillis = charIndex++ * 100,
+            )
+            fadeIn(animationSpec) + scaleIn(animationSpec)
+        },
+    )
+
+    LaunchedEffect(Unit) {
+        delay(1000)
+        text.value = "Hello, How are you?"
+    }
+}
+```
+
+You can create custom `DiffBreaker` implementations to split text differently, such as by pairs of characters or syllables.
