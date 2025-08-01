@@ -216,6 +216,8 @@ private fun PreviewInlineContent() {
         AnimatedTextDiff(
             text = text.value,
             inlineContent = inlineContent,
+            topClipPadding = 12.dp,
+            bottomClipPadding = 12.dp,
         )
 
         LaunchedEffect(Unit) {
