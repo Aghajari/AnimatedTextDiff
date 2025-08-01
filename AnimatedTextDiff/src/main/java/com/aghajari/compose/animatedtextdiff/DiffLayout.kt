@@ -33,10 +33,9 @@ internal fun computeDiffTextLayout(
     computeDiff(
         textA = textA.text,
         textB = textB.text,
-        cleanupStrategy = cleanupStrategy
-    ).forEach {
-        val len = it.text.length
-        when (it.operation) {
+        cleanupStrategy = cleanupStrategy,
+    ) { operation, len ->
+        when (operation) {
             DiffComputer.Operation.DELETE -> {
                 newTextBoundary(textLayoutA, indexA, dynamic, textA, len, deletionBreaker, true)
                 indexA += len
@@ -77,9 +76,10 @@ private fun computeDiff(
     textA: String,
     textB: String,
     cleanupStrategy: DiffCleanupStrategy,
-): LinkedList<DiffComputer.Diff> {
+    action: (DiffComputer.Operation, Int) -> Unit,
+) {
     val diffImpl = DiffComputer()
-    return diffImpl.diff_main(textA, textB).also {
+    diffImpl.diff_main(textA, textB).also {
         when (cleanupStrategy) {
             DiffCleanupStrategy.Semantic -> {
                 diffImpl.diff_cleanupSemantic(it)
@@ -88,7 +88,98 @@ private fun computeDiff(
                 diffImpl.diff_cleanupEfficiency(it, cleanupStrategy.editCost)
             }
             DiffCleanupStrategy.None -> {}
+            is DiffCleanupStrategy.WordSemantic -> {
+                if (cleanupStrategy.editCost < 0) {
+                    diffImpl.diff_cleanupSemantic(it)
+                } else if (cleanupStrategy.editCost > 0) {
+                    diffImpl.diff_cleanupEfficiency(it, cleanupStrategy.editCost)
+                }
+                diffCleanupWord(it, cleanupStrategy.wordSplit)
+            }
         }
+    }.forEach {
+        val len = it.text.length
+        if (len > 0) {
+            action.invoke(it.operation, len)
+        }
+    }
+}
+
+private fun diffCleanupWord(
+    diffs: LinkedList<DiffComputer.Diff>,
+    wordSplit: (Char) -> Boolean,
+) {
+    val iterator = diffs.listIterator()
+    var prev: DiffComputer.Diff? = null
+
+    while (iterator.hasNext()) {
+        val current = iterator.next()
+
+        if (current.operation == DiffComputer.Operation.DELETE ||
+            current.operation == DiffComputer.Operation.INSERT
+        ) {
+            val currentOp = current.operation
+            val currentText = current.text
+
+            if (!iterator.hasNext()) {
+                return
+            }
+
+            val next = iterator.next()
+            if ((next.operation == DiffComputer.Operation.INSERT || next.operation == DiffComputer.Operation.DELETE) &&
+                next.operation != currentOp &&
+                prev?.operation == DiffComputer.Operation.EQUAL
+            ) {
+                val equalText = prev.text
+                val deleteText =
+                    if (currentOp == DiffComputer.Operation.DELETE) currentText else next.text
+                val insertText =
+                    if (currentOp == DiffComputer.Operation.INSERT) currentText else next.text
+
+                val commonPrefix = equalText.takeLastWhile(wordSplit)
+
+                val afterNext = if (iterator.hasNext()) {
+                    iterator.next()
+                } else {
+                    null
+                }
+
+                val commonSuffix = afterNext
+                    ?.takeIf { it.operation == DiffComputer.Operation.EQUAL }
+                    ?.text?.takeWhile(wordSplit)
+                    ?: ""
+
+                prev.text = equalText.dropLast(commonPrefix.length)
+
+                val newDelete = commonPrefix + deleteText + commonSuffix
+                val newInsert = commonPrefix + insertText + commonSuffix
+
+                if (currentOp == DiffComputer.Operation.DELETE) {
+                    current.text = newDelete
+                    next.text = newInsert
+                } else {
+                    current.text = newInsert
+                    next.text = newDelete
+                }
+
+                if (commonSuffix.isNotEmpty() && afterNext != null) {
+                    afterNext.text = afterNext.text.drop(commonSuffix.length)
+                    if (afterNext.text.isEmpty()) {
+                        iterator.remove()
+                    } else {
+                        iterator.previous()
+                    }
+                }
+
+                iterator.previous()
+                prev = current
+                continue
+            } else {
+                iterator.previous()
+            }
+        }
+
+        prev = current
     }
 }
 
