@@ -1,12 +1,11 @@
 package com.aghajari.compose.animatedtextdiff
 
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.style.ResolvedTextDirection
-import java.util.LinkedList
+import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.max
 import kotlin.math.min
 
@@ -88,98 +87,12 @@ private fun computeDiff(
                 diffImpl.diff_cleanupEfficiency(it, cleanupStrategy.editCost)
             }
             DiffCleanupStrategy.None -> {}
-            is DiffCleanupStrategy.WordSemantic -> {
-                if (cleanupStrategy.editCost < 0) {
-                    diffImpl.diff_cleanupSemantic(it)
-                } else if (cleanupStrategy.editCost > 0) {
-                    diffImpl.diff_cleanupEfficiency(it, cleanupStrategy.editCost)
-                }
-                diffCleanupWord(it, cleanupStrategy.wordSplit)
-            }
         }
     }.forEach {
         val len = it.text.length
         if (len > 0) {
             action.invoke(it.operation, len)
         }
-    }
-}
-
-private fun diffCleanupWord(
-    diffs: LinkedList<DiffComputer.Diff>,
-    wordSplit: (Char) -> Boolean,
-) {
-    val iterator = diffs.listIterator()
-    var prev: DiffComputer.Diff? = null
-
-    while (iterator.hasNext()) {
-        val current = iterator.next()
-
-        if (current.operation == DiffComputer.Operation.DELETE ||
-            current.operation == DiffComputer.Operation.INSERT
-        ) {
-            val currentOp = current.operation
-            val currentText = current.text
-
-            if (!iterator.hasNext()) {
-                return
-            }
-
-            val next = iterator.next()
-            if ((next.operation == DiffComputer.Operation.INSERT || next.operation == DiffComputer.Operation.DELETE) &&
-                next.operation != currentOp &&
-                prev?.operation == DiffComputer.Operation.EQUAL
-            ) {
-                val equalText = prev.text
-                val deleteText =
-                    if (currentOp == DiffComputer.Operation.DELETE) currentText else next.text
-                val insertText =
-                    if (currentOp == DiffComputer.Operation.INSERT) currentText else next.text
-
-                val commonPrefix = equalText.takeLastWhile(wordSplit)
-
-                val afterNext = if (iterator.hasNext()) {
-                    iterator.next()
-                } else {
-                    null
-                }
-
-                val commonSuffix = afterNext
-                    ?.takeIf { it.operation == DiffComputer.Operation.EQUAL }
-                    ?.text?.takeWhile(wordSplit)
-                    ?: ""
-
-                prev.text = equalText.dropLast(commonPrefix.length)
-
-                val newDelete = commonPrefix + deleteText + commonSuffix
-                val newInsert = commonPrefix + insertText + commonSuffix
-
-                if (currentOp == DiffComputer.Operation.DELETE) {
-                    current.text = newDelete
-                    next.text = newInsert
-                } else {
-                    current.text = newInsert
-                    next.text = newDelete
-                }
-
-                if (commonSuffix.isNotEmpty() && afterNext != null) {
-                    afterNext.text = afterNext.text.drop(commonSuffix.length)
-                    if (afterNext.text.isEmpty()) {
-                        iterator.remove()
-                    } else {
-                        iterator.previous()
-                    }
-                }
-
-                iterator.previous()
-                prev = current
-                continue
-            } else {
-                iterator.previous()
-            }
-        }
-
-        prev = current
     }
 }
 
@@ -213,7 +126,6 @@ private fun newTextBoundary(
         var segmentStartOffset = startOffset
         segments.forEach { segment ->
             val line = textLayout.getLineForOffset(segmentIndex)
-            val box = getBoundingBox(textLayout, segment, segmentIndex)
             out.add(
                 TextBoundary(
                     range = TextRange(
@@ -221,7 +133,7 @@ private fun newTextBoundary(
                         end = segmentStartOffset + segment.length,
                     ),
                     text = segment,
-                    left = box.left,
+                    left = getOffsetLeft(textLayout, segment, segmentIndex),
                     top = textLayout.getLineTop(line),
                     isExit = isExit,
                 ),
@@ -255,16 +167,13 @@ private fun newMoveTextBoundary(
 
         val fromLine = textLayoutA.getLineForOffset(indexA + consumed)
         val toLine = textLayoutB.getLineForOffset(indexB + consumed)
-        val boxA = getBoundingBox(textLayoutA, str, indexA + consumed)
-        val boxB = getBoundingBox(textLayoutB, str, indexB + consumed)
-
         out.add(
             MoveTextBoundary(
                 range = TextRange(start = startOffset, end = endOffset),
                 text = str,
-                fromLeft = boxA.left,
+                fromLeft = getOffsetLeft(textLayoutA, str, indexA + consumed),
                 fromTop = textLayoutA.getLineTop(fromLine),
-                toLeft = boxB.left,
+                toLeft = getOffsetLeft(textLayoutB, str, indexB + consumed),
                 toTop = textLayoutB.getLineTop(toLine),
             ),
         )
@@ -276,20 +185,32 @@ private fun canOptimizeFirstEqual(
     textLayoutA: TextLayoutResult,
     textLayoutB: TextLayoutResult,
 ): Boolean {
-    return textLayoutA.getBidiRunDirection(0) == ResolvedTextDirection.Ltr &&
+    return textLayoutA.layoutInput.layoutDirection == LayoutDirection.Ltr &&
+            textLayoutB.layoutInput.layoutDirection == LayoutDirection.Ltr &&
+            textLayoutA.getBidiRunDirection(0) == ResolvedTextDirection.Ltr &&
             textLayoutB.getBidiRunDirection(0) == ResolvedTextDirection.Ltr
 }
 
-private fun getBoundingBox(
+private fun getOffsetLeft(
     textLayout: TextLayoutResult,
     subtext: AnnotatedString,
     offset: Int,
-): Rect {
-    val dir = textLayout.getBidiRunDirection(offset)
-    return if (dir == ResolvedTextDirection.Rtl) {
-        textLayout.getBoundingBox(offset + subtext.length - 1)
-    } else {
-        textLayout.getBoundingBox(offset)
+): Float {
+    val bidiDir = textLayout.getBidiRunDirection(offset)
+    val dir = textLayout.layoutInput.layoutDirection
+    return when {
+        bidiDir == ResolvedTextDirection.Rtl && dir == LayoutDirection.Ltr -> {
+            textLayout.getBoundingBox(offset + subtext.length - 1).left
+        }
+        bidiDir == ResolvedTextDirection.Rtl && dir == LayoutDirection.Rtl -> {
+            -textLayout.size.width + textLayout.getBoundingBox(offset).right
+        }
+        dir == LayoutDirection.Rtl -> {
+            -textLayout.size.width + textLayout.getBoundingBox(offset + subtext.length - 1).right
+        }
+        else -> {
+            textLayout.getBoundingBox(offset).left
+        }
     }
 }
 
