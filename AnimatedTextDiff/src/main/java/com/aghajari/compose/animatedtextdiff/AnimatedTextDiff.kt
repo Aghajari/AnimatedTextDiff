@@ -46,6 +46,9 @@ import androidx.compose.ui.util.fastForEach
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 
 /**
  * Displays text with animated transitions for changes, using a diff algorithm to animate
@@ -360,7 +363,6 @@ fun AnimatedTextDiff(
                 }
             }
         }
-
         newText.value?.let { textB ->
             StyledText(
                 text = textB,

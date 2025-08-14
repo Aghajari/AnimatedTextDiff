@@ -78,13 +78,13 @@ private fun computeDiff(
     action: (DiffComputer.Operation, Int) -> Unit,
 ) {
     val diffImpl = DiffComputer()
-    diffImpl.diff_main(textA, textB).also {
+    diffImpl.diffMain(textA, textB).also {
         when (cleanupStrategy) {
             DiffCleanupStrategy.Semantic -> {
-                diffImpl.diff_cleanupSemantic(it)
+                diffImpl.diffCleanupSemantic(it)
             }
             is DiffCleanupStrategy.Efficiency -> {
-                diffImpl.diff_cleanupEfficiency(it, cleanupStrategy.editCost)
+                diffImpl.diffCleanupEfficiency(it, cleanupStrategy.editCost)
             }
             DiffCleanupStrategy.None -> {}
         }
