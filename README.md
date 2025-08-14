@@ -56,9 +56,6 @@ The `diffCleanupStrategy` controls how the diff algorithm optimizes changes:
   - Deletes the whole word "World".
   - Inserts the whole word "Amir".
 - **`Efficiency`**: Balances semantic cleanup with performance, reducing trivial edits.
-- **`WordSemantic`**:  Performs cleanup at the **word level**, ideal for preserving layout and visual clarity, especially in RTL languages. For example, changing "Exit" to "Test":
-  - Instead of showing a partial replacement like "Exi" with "Tes", it replaces the whole word "Exit" with "Test".
-  - Helps prevent layout issues in right-aligned or bidirectional text.
 
 ## Customizing Animations
 You can customize the animations for insertions, deletions, and movements:
